@@ -9,7 +9,7 @@ module single_cycle_top_tb;
     wire [31:0] data_address;
     wire mem_write_en;
 
-    // Instantiate Top Module
+    // Instantiate your processor
     single_cycle_top uut (
         .clk(clk),
         .arsetn(arsetn),
@@ -18,55 +18,60 @@ module single_cycle_top_tb;
         .mem_write_en(mem_write_en)
     );
 
-    // Clock Generation: 20ns period (50 MHz)
+    // 50 MHz Clock
     always #10 clk = ~clk;
+
+    // MMIO Magic Addresses
+    localparam [31:0] ADDR_HALT = 32'h00000FFC; // 4092
+
+    integer cycle_count;
 
     initial begin
         clk = 0;
         arsetn = 0; 
+        cycle_count = 0;
         
-        // Load the Master Stress Test
-        $readmemh("master_test.hex", uut.imem.instruction_mem);
+        $readmemh("/home/talha-taki/RISC-V/Rex-V/input/programs/stress_test.hex", uut.imem.instruction_mem);
 
-        $dumpfile("processor_wave.vcd");
+        // Optional: Dump waves for debugging
+        $dumpfile("single_cycle_top_wave.vcd");
         $dumpvars(0, single_cycle_top_tb);
 
         #45;
         arsetn = 1; 
         
-        // Fallback timeout just in case of a hard crash
+        // Failsafe timeout
         #100000;
-        $display("\n[ERROR] Simulation Timed Out. The CPU is stuck.");
+        $display("\n[FATAL ERROR] CPU got stuck in an infinite loop early. Timeout reached.");
         $finish;
     end
 
-    // The Verification Watchdog
+    // Track Execution Cycles
+    always @(posedge clk) begin
+        if (arsetn) cycle_count = cycle_count + 1;
+    end
+
+    // The Master MMIO Interceptor
     always @(negedge clk) begin
-        // Check if the CPU is trying to write to memory
+        // If the CPU executes a Store Word...
         if (mem_write_en) begin
-            // Did it write to Address 100?
-            if (data_address == 32'd100) begin
-                // Check if the payload is the Victory Code
-                if (write_data == 32'd2026) begin
-                    $display("\n===========================================================");
-                    $display("  [SUCCESS!] CPU PASSED THE MASTER STRESS TEST!");
-                    $display("  Victory Code '2026' successfully written to Memory[100].");
-                    $display("  All 10 instructions are functioning flawlessly.");
-                    $display("===========================================================\n");
-                    $finish; // End simulation on success
+            
+            // ...and it writes to the Magic Halt Address...
+            if (data_address == ADDR_HALT) begin
+                $display("\n===========================================================");
+                if (write_data == 32'd1) begin
+                    $display("    [SUCCESS] REX-V PASSED THE EXTREME STRESS TEST!");
+                    $display("    All arithmetic, memory, and control branches are flawless.");
+                    $display("    Execution completed in %0d clock cycles.", cycle_count);
+                end else if (write_data == 32'd2) begin
+                    $display("    [FAILED] CPU math or memory integrity broke during Phase 2/3.");
+                    $display("    Check registers x9 and x15 in your waveform.");
                 end else begin
-                    $display("\n[FAILED] CPU reached the end, but the math was wrong.");
-                    $display("Expected 2026, but CPU wrote: %0d", write_data);
-                    $finish; // End simulation on failure
+                    $display("    [FAILED] CPU wrote an unknown error code: %0d", write_data);
                 end
+                $display("===========================================================\n");
+                $finish;
             end
-        end
-        
-        // If it hits the infinite loop without writing to memory, it failed early
-        if (uut.instruction == 32'h00000063 && arsetn) begin
-            $display("\n[FAILED] CPU trapped itself in the FAIL state.");
-            $display("It failed a branch or jump evaluation and never reached the finish line.");
-            $finish;
         end
     end
 

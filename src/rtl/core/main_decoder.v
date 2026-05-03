@@ -14,7 +14,7 @@ module main_decoder (
 
     always @(*) begin
         case (opcode)
-            //                                  res_imm_alu_R_M_B_J_A
+            //                             res_imm_alu_R_M_B_J_A
             7'b0110011: control_signals = 11'b00_xx_10_1_0_0_0_0; // R-type
             7'b0010011: control_signals = 11'b00_00_10_1_0_0_0_1; // I-type (ADDI)
             7'b0000011: control_signals = 11'b01_00_00_1_0_0_0_1; // Load (I-type imm)

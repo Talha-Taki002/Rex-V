@@ -47,6 +47,4 @@ module single_cycle_core (
 
     
 
-
-
 endmodule
