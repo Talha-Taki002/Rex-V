@@ -29,7 +29,7 @@ module single_cycle_top_tb;
     reg [31:0] fail_code = 0;
     integer cycle_count = 0;
 
-    reg [255:0] test_file;
+    reg [1023:0] test_file;
 
     initial begin
         clk = 0;
