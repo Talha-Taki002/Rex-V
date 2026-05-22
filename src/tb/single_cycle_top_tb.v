@@ -30,6 +30,21 @@ module single_cycle_top_tb;
     integer cycle_count = 0;
 
     reg [1023:0] test_file;
+    reg [1023:0] vcd_path;
+
+    // dump file for waveform analysis
+
+    initial begin
+        // Check if a path was passed from the command line
+        if ($value$plusargs("vcd_path=%s", vcd_path)) begin
+            $dumpfile(vcd_path);
+        end else begin
+            // Fallback if no argument is provided
+            $dumpfile("processor_wave_dump.vcd"); 
+        end
+        
+        $dumpvars(0, single_cycle_top_tb);
+    end
 
     initial begin
         clk = 0;
@@ -42,9 +57,6 @@ module single_cycle_top_tb;
         
         $display("\n[INIT] Loading %s into Instruction Memory...", test_file);
         $readmemh(test_file, uut.imem.instruction_mem);
-
-        $dumpfile("processor_wave.vcd");
-        $dumpvars(0, single_cycle_top_tb);
 
         #45;
         arsetn = 1; 
